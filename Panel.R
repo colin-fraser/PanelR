@@ -41,5 +41,5 @@ within <- function(dt, i, col) {
 dt <- data.table(person = rep(1:5, each=5), time = rep(seq(1:5)), data = rnorm(25))
 panel <- Panel$new(dt, 'person', 'time')
 panel$within('data')
-panel$balanced()
+panel$balanced
 4
