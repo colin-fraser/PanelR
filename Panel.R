@@ -1,5 +1,5 @@
-require(data.table)
-require(R6)
+library(data.table)
+library(R6)
 
 Panel <- R6Class("Panel",
                  public = list(
@@ -7,15 +7,13 @@ Panel <- R6Class("Panel",
                    i = NA,
                    t = NA,
                    T = NA,
+                   n = NA,
                    N = NA,
-                   balanced = NA,
                    initialize = function(data, i, t) {
                      self$data <- data
                      self$i <- i
                      self$t <- t
-                     self$N <- self$data[, length(unique(get(self$i)))]
-                     self$T <- self$data[, length(unique(get(self$t)))]
-                     self$balanced <- self$determine_balance()
+                     private$set_panel_attrs()
                      setkeyv(self$data, c(self$i, self$t))
                    },
                    within = function(col) {
@@ -23,23 +21,34 @@ Panel <- R6Class("Panel",
                      setnames(result, 'V1', colname)
                      result
                    },
-                   determine_balance = function() {
-                     observations <- self$data[, length(get(self$t)) == self$T, by=get(self$i)][, V1]
-                     min(observations) == max(observations) # check if all equal
-                   },
                    print = function() {
                      print(self$data)
+                   },
+                   trim = function(start_date, end_date, verbose = T) {
+                     # drops observations outside of [start_date, end_date]
+                     indices <- self$data[, .(tf = get(self$t) >= start_date & get(self$t) <= end_date)]
+                     self$data <- self$data[indices$tf]
+                     if (verbose) {
+                       dropped <- sum(!indices$tf)
+                       total <- sum(indices$tf) + sum(!indices$tf)
+                       warning(paste(sum(!indices$tf), 'of', sum(indices$tf) + sum(!indices$tf),
+                                     paste('(',round(100 * dropped / total, 2),'%)', sep=''), 
+                                     'observations dropped'))
+                     }
+                     private$set_panel_attrs()
+                   },
+                 ),
+                 active = list(
+                   balanced = function() {
+                     observations <- self$data[, length(get(self$t)) == self$T, by=get(self$i)][, V1]
+                     min(observations) == max(observations) # check if all equal
                    }
-                   
+                 ),
+                 private = list(
+                   set_panel_attrs = function() {
+                     self$n <- self$data[, length(unique(get(self$i)))]
+                     self$T <- self$data[, length(unique(get(self$t)))]
+                     self$N <- dim(self$data)[1]
+                   }
                  )
 )
-
-within <- function(dt, i, col) {
-  dt[, mean(col), by=i]
-}
-
-dt <- data.table(person = rep(1:5, each=5), time = rep(seq(1:5)), data = rnorm(25))
-panel <- Panel$new(dt, 'person', 'time')
-panel$within('data')
-panel$balanced
-4
