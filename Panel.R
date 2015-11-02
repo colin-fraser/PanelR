@@ -107,6 +107,7 @@ Panel <- R6Class("Panel",
 }
 
 get_CL_vcov<-function(model, cluster){
+  # I stole this from here http://rforpublichealth.blogspot.ca/2014_10_01_archive.html
   require(sandwich, quietly = TRUE)
   require(lmtest, quietly = TRUE)
   
