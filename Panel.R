@@ -11,12 +11,16 @@ Panel <- R6Class("Panel",
                    T = NA,
                    n = NA,
                    N = NA,
+                   individual_index = NA,
+                   time_index = NA,
                    first_obs = NA,
                    last_obs = NA,
                    initialize = function(data, i, t) {
                      self$data <- data
                      self$i <- i
                      self$t <- t
+                     self$individual_index <- self$data[, get(self$i)]
+                     self$time_index <- self$data[, get(self$t)]
                      private$set_panel_attrs()
                      setkeyv(self$data, c(self$i, self$t))
                    },
@@ -44,13 +48,22 @@ Panel <- R6Class("Panel",
                      self$data[, count := NULL]
                      private$set_panel_attrs()
                    },
-                   xtreg = function(dependent, independent, type='fe') {
-                     f <- as.formula(paste(dependent, '~ 0 +', paste(independent, collapse=' + ')))
-                     print(f)
-                     
-                     l <- lm(f, data=self$within(c(dependent, independent)))
-                     l$df.residual <- l$df.residual - self$n
-                     l
+                   xtreg = function(dependent, independent, type='fe', se='cluster') {
+                     if (type == 'fe') {
+                       # the fixed effects model is estimated using the within transformation with an intercept
+                       # as detailed here http://www.stata.com/support/faqs/statistics/intercept-in-fixed-effects-model/
+                       
+                       f <- as.formula(paste(dependent, '~', paste(independent, collapse=' + ')))
+                       data <- self$within(c(dependent, independent))
+                       grand_means <- private$grand_means(c(dependent, independent))
+                       for (col in 1:length(c(dependent, independent))) {
+                         v = data[, col, with=FALSE] + grand_means[col]
+                         set(data, j = col, value = v)
+                       }
+                       l <- lm(f, data=data)
+                       l$df.residual <- l$df.residual - self$n + 1
+                       l
+                     }
                    },
                    update_panel = function() {
                      private$set_panel_attrs()
@@ -95,6 +108,15 @@ Panel <- R6Class("Panel",
                      self$N <- N
                      self$first_obs <- first_obs
                      self$last_obs <- last_obs
+                     return(NULL)
+                   },
+                   grand_means = function(colnames) {
+                     means <- numeric()
+                     for (col in colnames) {
+                       means <- append(x = means, values = self$data[, mean(get(col))])
+                     }
+                     setNames(object = means, nm = colnames)
+                     return(means)
                    }
                  )
 )
@@ -103,11 +125,11 @@ Panel <- R6Class("Panel",
 
 `[.Panel` <- function(x, ...) {
   x$data[...]
-  x$set_panel_attrs()
+  x$update_panel()
 }
 
-get_CL_vcov<-function(model, cluster){
-  # I stole this from here http://rforpublichealth.blogspot.ca/2014_10_01_archive.html
+
+get_CL_vcov <- function(model, cluster){
   require(sandwich, quietly = TRUE)
   require(lmtest, quietly = TRUE)
   
