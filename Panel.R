@@ -61,9 +61,15 @@ Panel <- R6Class("Panel",
                          set(data, j = col, value = v)
                        }
                        l <- lm(f, data=data)
-                       l$df.residual <- l$df.residual - self$n + 1
-                       l
+                       # l$df.residual <- l$df.residual - self$n + 1
                      }
+                     
+                     if (se == 'cluster') {
+                       vc <- cluster.vcov(l, self$individual_index)
+                       t <- coeftest(l, vcov=vc)
+                       w <- waldtest(l, vcov=vc, test='F')
+                     }
+                     return(list(model=l, vcov=vc, t_test=t, F_test = w))
                    },
                    update_panel = function() {
                      private$set_panel_attrs()
@@ -117,6 +123,23 @@ Panel <- R6Class("Panel",
                      }
                      setNames(object = means, nm = colnames)
                      return(means)
+                   },
+                   get_CL_vcov = function(model, cluster){
+                     require(sandwich, quietly = TRUE)
+                     require(lmtest, quietly = TRUE)
+                     
+                     #calculate degree of freedom adjustment
+                     M <- length(unique(cluster))
+                     N <- length(cluster)
+                     K <- model$rank
+                     dfc <- (M/(M-1))*((N-1)/(N-K))
+                     
+                     #calculate the uj's
+                     uj  <- apply(estfun(model),2, function(x) tapply(x, cluster, sum))
+                     
+                     #use sandwich to get the var-covar matrix
+                     vcovCL <- dfc*sandwich(model, meat=crossprod(uj)/N)
+                     return(vcovCL)
                    }
                  )
 )
@@ -129,20 +152,3 @@ Panel <- R6Class("Panel",
 }
 
 
-get_CL_vcov <- function(model, cluster){
-  require(sandwich, quietly = TRUE)
-  require(lmtest, quietly = TRUE)
-  
-  #calculate degree of freedom adjustment
-  M <- length(unique(cluster))
-  N <- length(cluster)
-  K <- model$rank
-  dfc <- (M/(M-1))*((N-1)/(N-K))
-  
-  #calculate the uj's
-  uj  <- apply(estfun(model),2, function(x) tapply(x, cluster, sum))
-  
-  #use sandwich to get the var-covar matrix
-  vcovCL <- dfc*sandwich(model, meat=crossprod(uj)/N)
-  return(vcovCL)
-}
