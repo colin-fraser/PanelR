@@ -15,6 +15,17 @@ Panel <- R6Class("Panel",
                    time_index = NA,
                    first_obs = NA,
                    last_obs = NA,
+                   
+                   #' Initialize a Panel
+                   #'
+                   #' @param data A data.table which forms the data.
+                   #' @param i The name of the column containing the unit of observation.
+                   #' @param t The name of the column containing the unit of time.
+                   #'
+                   #' @return A panel object
+                   #' @export
+                   #'
+                   #' @examples
                    initialize = function(data, i, t) {
                      self$data <- data
                      self$i <- i
@@ -24,6 +35,14 @@ Panel <- R6Class("Panel",
                      private$set_panel_attrs()
                      setkeyv(self$data, c(self$i, self$t))
                    },
+                   #' Within transform
+                   #'
+                   #' @param cols column names to apply the within transform to
+                   #'
+                   #' @return The within-transformed columns.
+                   #' @export
+                   #'
+                   #' @examples
                    within = function(cols) {
                      result <- self$data[, c(self$i, self$t, cols), with=FALSE]
                      for (col in cols) {
@@ -127,9 +146,9 @@ Panel <- R6Class("Panel",
                  )
 )
 
-
-
 `[.Panel` <- function(x, ...) {
   x$data[...]
   x$update_panel()
 }
+
+
