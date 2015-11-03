@@ -1,6 +1,6 @@
 library(data.table)
+library(multiwayvcov)
 library(lmtest)
-library(sandwich)
 library(R6)
 
 Panel <- R6Class("Panel",
@@ -123,23 +123,6 @@ Panel <- R6Class("Panel",
                      }
                      setNames(object = means, nm = colnames)
                      return(means)
-                   },
-                   get_CL_vcov = function(model, cluster){
-                     require(sandwich, quietly = TRUE)
-                     require(lmtest, quietly = TRUE)
-                     
-                     #calculate degree of freedom adjustment
-                     M <- length(unique(cluster))
-                     N <- length(cluster)
-                     K <- model$rank
-                     dfc <- (M/(M-1))*((N-1)/(N-K))
-                     
-                     #calculate the uj's
-                     uj  <- apply(estfun(model),2, function(x) tapply(x, cluster, sum))
-                     
-                     #use sandwich to get the var-covar matrix
-                     vcovCL <- dfc*sandwich(model, meat=crossprod(uj)/N)
-                     return(vcovCL)
                    }
                  )
 )
@@ -150,5 +133,3 @@ Panel <- R6Class("Panel",
   x$data[...]
   x$update_panel()
 }
-
-
