@@ -2,7 +2,9 @@ Package: PanelR
 Title: Panel econometrics in R
 Version: 0.0.0.9000
 Authors@R: person("Colin", "Fraser", email = "colin.r.fraser@gmail.com  ", role = c("aut", "cre"))
+Maintainer: Colin Fraser <colin.r.fraser@gmail.com>
 Description: Implements Stata-like panel capabilities to R using data.tables and R6 classes.
-Depends: R (>= 3.2.2)
+Depends: R (>= 3.2.2), data.table, R6
 License: What license is it under?
 LazyData: true
+Suggests: testthat
