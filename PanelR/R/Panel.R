@@ -23,8 +23,8 @@ Panel <- R6Class("Panel",
                      self$data <- data
                      self$i <- i
                      self$t <- t
-                     self$individual_index <- self$data[, get(self$i)]
-                     self$time_index <- self$data[, get(self$t)]
+                     self$individual_index <- self$data[[self$i]]
+                     self$time_index <- self$data[[self$t]]
                      private$set_panel_attrs()
                      setkeyv(self$data, c(self$i, self$t))
                    },
@@ -34,7 +34,7 @@ Panel <- R6Class("Panel",
                      d <- function(x) x - mean(x) # demean function
 
                      for (col in cols) {
-                       rep <- result[, d(get(col)), by = get(self$i)]$V1
+                       rep <- ave(self$data[[col]], self$individual_index)
                        set(result, j = col, value = rep)
                      }
                      result[, cols, with = FALSE]
@@ -93,9 +93,8 @@ Panel <- R6Class("Panel",
                  ),
                  active = list(
                    balanced = function() {
-                     observations <- self$data[, length(get(self$t)) == self$T,
-                                               by = get(self$i)][, V1]
-                     min(observations) == max(observations) # check if all equal
+                     counts <- as.numeric(table(self$individual_index))
+                     min(counts) == max(counts)
                    },
                    columns = function() {
                      names(self$data)
@@ -104,11 +103,11 @@ Panel <- R6Class("Panel",
                  ),
                  private = list(
                    set_panel_attrs = function() {
-                     n <- self$data[, length(unique(get(self$i)))]
-                     T <- self$data[, length(unique(get(self$t)))]
+                     n <- nunique(self$individual_index)
+                     T <- nunique(self$time_index)
                      N <- dim(self$data)[1]
-                     first_obs <- self$data[, min(get(self$t))]
-                     last_obs <- self$data[, max(get(self$t))]
+                     first_obs <- self$data[, min(self$t), with = FALSE]
+                     last_obs <- self$data[, max(self$t), with = FALSE]
                      if (!is.na(self$N) & self$N != N) {
                        warning(
                          paste(
@@ -244,7 +243,7 @@ PanelRegression <- R6Class(
   )
 )
 
-
+nunique <- function(x) length(unique(x))
 
 
 `[.Panel` <- function(x, ...) {
